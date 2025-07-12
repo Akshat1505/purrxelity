@@ -1,6 +1,7 @@
 from langchain_core.messages import AIMessage, BaseMessage,HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import ToolNode
+from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import add_messages,StateGraph
 from langgraph.constants import START,END
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -17,8 +18,13 @@ class LLMNode():
 
     def __call__(self,state:BasicChat):
         last_message=state["messages"]
+        prompt_template=ChatPromptTemplate.from_messages([
+            ("system","You are a helpful AI built to solve user queries with access to Search Feature if user asks for question that needs up to date information otherwise answer normally"),
+            ("user","User input is {input}")
+        ])
+        filled_template=prompt_template.format(input=last_message)
         return{
-            "messages":[self.llm.invoke(last_message)]
+            "messages":[self.llm.invoke(filled_template)]
         }
 
 model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.7)
