@@ -7,8 +7,11 @@ from langgraph.graph import add_messages,StateGraph
 from langgraph.constants import START,END
 from langchain_community.tools.tavily_search import TavilySearchResults
 from typing import Annotated,Sequence,List, TypedDict
-from train_status import search_train
+from langgraph.checkpoint.sqlite import SqliteSaver
+import sqlite3
 from dotenv import load_dotenv
+import uuid
+from train_status import search_train
 load_dotenv()
 
 class BasicChat(TypedDict):
@@ -30,6 +33,8 @@ class LLMNode():
         }
 
 model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
+sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
+memory=SqliteSaver(sql_conn)
 search_tool=TavilySearchResults(max_result=5)
 tools=[search_tool,search_train]
 agent=LLMNode(llm=model.bind_tools(tools))
@@ -54,12 +59,14 @@ graph.add_conditional_edges(
         END:END
     }
 )
-app=graph.compile()
+app=graph.compile(checkpointer=memory)
+random_thread_id=uuid.uuid4()
 while True:
     user_input=input("Enter _> : ")
     if user_input in ['exit','quit']:
         break
     result=app.invoke({
         "messages":HumanMessage(content=user_input)
-    })
+    },{"configurable":{"thread_id":random_thread_id}}
+    )
     print(result["messages"][-1].content)
