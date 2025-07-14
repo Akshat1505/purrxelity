@@ -12,6 +12,7 @@ import sqlite3
 from dotenv import load_dotenv
 import uuid
 from train_status import search_train
+from gmail_integr import user_gmail
 load_dotenv()
 
 class BasicChat(TypedDict):
@@ -24,7 +25,7 @@ class LLMNode():
     def __call__(self,state:BasicChat):
         last_message=state["messages"]
         prompt_template=ChatPromptTemplate.from_messages([
-            ("system","You are a helpful AI built to solve user queries with access to Search Feature if user asks for question that needs up to date information otherwise answer normally. You can also use the search_train tool to find trains between two railway station to give user a consise answer for available train and coach classes available"),
+            ("system","You are a helpful AI uilt to solve user queries with access to Search Feature if user asks for question that needs up to date information otherwise answer normally. You can also use the search_train tool to find trains between two railway station to give user a consise answer for available train and coach classes available. You also have access to gmail in case user wants you to perform action related to email"),
             ("user","User input is {input}")
         ])
         filled_template=prompt_template.format(input=last_message)
@@ -36,7 +37,7 @@ model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
 sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
 memory=SqliteSaver(sql_conn)
 search_tool=TavilySearchResults(max_result=5)
-tools=[search_tool,search_train]
+tools=[search_tool,search_train,*user_gmail()]
 agent=LLMNode(llm=model.bind_tools(tools))
 
 def ModelCallTool(state:BasicChat):
