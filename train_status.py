@@ -2,7 +2,6 @@ import json,os,requests
 from datetime import date
 from langchain_core.tools import tool
 
-
 @tool
 def search_train(source:str,destination:str):
     """
