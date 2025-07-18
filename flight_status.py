@@ -30,7 +30,7 @@ def search_flight(source:str,destination:str,seating_class:str="E"):
         "userType": "discount",
         "cohort": "disc005",
         "productFlow": "nu_slasher",
-        "user_id": "1434109935",
+        "user_id": "1",
         "application_platform": "dweb",
     }    
     url = "https://travel.paytm.com/api/flights/v3/search?" + urllib.parse.urlencode(params)

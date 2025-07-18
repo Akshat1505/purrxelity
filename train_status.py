@@ -37,8 +37,6 @@ def search_train(source:str,destination:str):
 
     response=requests.get(url,headers=headers)
 
-    # print("Status -> ",response.status_code)
-
     if response.status_code==200:
         train_data=response.json()["body"]["trains"]
         if not train_data: return "No trains found for the given date"
@@ -62,11 +60,6 @@ def search_train(source:str,destination:str):
 
     else:
         raise Exception(f"Failed with {response.status_code}")
-#
-# for train in search_train.invoke({"source":"BE","destination":"NDLS"})["body"]["trains"]:
-#     print(f"Train Name {train["trainName"]} Train Number {train["trainNumber"]}")
-#     for coach_class in train["availability"]:
-#         print(f"Class {coach_class["code"]} Fare {coach_class["fare"]} Aval {coach_class["status_shortform"]}") #fare not aval tatkal
+
 if __name__=="__main__":
-    # print("Hello")
     print(search_train.invoke({"source":"BE","destination":"NDLS"}))
