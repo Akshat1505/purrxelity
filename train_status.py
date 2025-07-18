@@ -11,9 +11,10 @@ def search_train(source:str,destination:str):
     destination(str): The destination station code (e.g. "NDLS").
     Returns:
     A JSON object containing information about train availability, including train name, number and class availability with fares
-    abbreviation SL-Sleeper, 3A-Third AC, 2A-Second AC, 1A-First AC 
+    abbreviation SL-Sleeper, 3A-Third AC, 2A-Second AC, 1A-First AC. If fare for any class shows as 0 take it as infinite
     """
     departure_date=date.today().strftime("%Y%m%d")
+    # print(departure_date)
     url = (
         "https://travel.paytm.com/api/trains/v5/search?"
         f"departureDate={departure_date}"
@@ -46,13 +47,18 @@ def search_train(source:str,destination:str):
             curr_train=train["trainName"]+"-"+train["trainNumber"]
             coach_class_stor_temp=[]
             for coach_class in train["availability"]:
+                fare_value=coach_class.get("fare")
+                try:
+                    fare_int=int(fare_value)
+                except (ValueError,TypeError):
+                    fare_int=0
                 coach_class_stor_temp.append({
                     "code":coach_class.get("code"),
-                    "fare":int(coach_class.get("fare")), #can explode use try except
+                    "fare":fare_int, #can explode use try except
                     "status_shortform":coach_class.get("status_shortform")
                 })
             formatted_result[curr_train]=coach_class_stor_temp
-        return formatted_result
+        return json.dumps(formatted_result,indent=4)
 
     else:
         raise Exception(f"Failed with {response.status_code}")
@@ -61,5 +67,6 @@ def search_train(source:str,destination:str):
 #     print(f"Train Name {train["trainName"]} Train Number {train["trainNumber"]}")
 #     for coach_class in train["availability"]:
 #         print(f"Class {coach_class["code"]} Fare {coach_class["fare"]} Aval {coach_class["status_shortform"]}") #fare not aval tatkal
-if __name__=="main":
+if __name__=="__main__":
+    # print("Hello")
     print(search_train.invoke({"source":"BE","destination":"NDLS"}))
