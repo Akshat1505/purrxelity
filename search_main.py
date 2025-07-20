@@ -14,6 +14,8 @@ import uuid
 from train_status import search_train
 from gmail_integr import user_gmail
 from rag_main import rag_tool
+from flight_status import search_flight
+from datetime_tool import get_curr_date
 load_dotenv()
 
 class BasicChat(TypedDict):
@@ -33,6 +35,8 @@ class LLMNode():
             "Gmail Tool: Use the Gmail tool to perform actions related to email, like reading, sending, or searching emails from the user's account."
             "Document Retriever Tool: Use this to search and return relevant information from user-uploaded documents using retrieval-augmented generation (RAG)."
             "Answer normally when the query does not require any tool usage."
+            "Flight Search Tool: Use the `search_flight` tool to find available flight between two airports and provide a concise answer about available flights. Always use the date tool first to accurately get the date for the date parameter. Specify the user how flight has been searched (e.g. Here are options for single adult, Here are options for two adult and a child)"
+            "Get Current Date Tool : Use the get_curr_date to get the current date in the format %Y%m%d"
             ),
             ("user","User input is {input}")
         ])
@@ -45,7 +49,7 @@ model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
 sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
 memory=SqliteSaver(sql_conn)
 search_tool=TavilySearchResults(max_result=5)
-tools=[search_tool,search_train,*user_gmail(),*rag_tool()]
+tools=[search_tool,search_train,*user_gmail(),*rag_tool(),search_flight,get_curr_date]
 agent=LLMNode(llm=model.bind_tools(tools))
 
 def ModelCallTool(state:BasicChat):
