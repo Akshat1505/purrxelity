@@ -49,7 +49,7 @@ model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
 sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
 memory=SqliteSaver(sql_conn)
 search_tool=TavilySearchResults(max_result=5)
-tools=[search_tool,search_train,*user_gmail(),*rag_tool(),search_flight,get_curr_date]
+tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date] #*user_gmail() token expired
 agent=LLMNode(llm=model.bind_tools(tools))
 
 def ModelCallTool(state:BasicChat):
@@ -74,6 +74,7 @@ graph.add_conditional_edges(
 )
 app=graph.compile(checkpointer=memory)
 random_thread_id=uuid.uuid4()
+print(app.get_graph().draw_ascii())
 while True:
     user_input=input("Enter _> : ")
     if user_input in ['exit','quit']:
