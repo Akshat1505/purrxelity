@@ -14,9 +14,9 @@ load_dotenv()
 
 llm=ChatGoogleGenerativeAI(model="gemini-2.5-flash",temperature=0.7)
 researchers=ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite",temperature=0.4)
-search_tool=TavilySearchResults(max_result=2)
+search_tool=TavilySearchResults(max_results=1)
 tools=[search_tool]
-# agent=researchers.bind_tools(tools)
+agent=researchers.bind_tools(tools)
 
 def generate_message_plan(state:ReportState):
     prompt=ChatPromptTemplate.from_messages([
@@ -31,18 +31,40 @@ def generate_message_plan(state:ReportState):
     response=Sections.model_validate(structured_llm.invoke(formatted_prompt))
     return {"sections":response.sections,"messages":HumanMessage(content="Sections Generated !")}
 
-async def research_agent(state:ReportState):
+def research_agent(state:ReportState): #removed async
     print(f"Agent {len(state["completed_sections"])} Called")
     section_to_research=state["sections"][len(state["completed_sections"])]
     print(f"Section to research {section_to_research}")
+    print("\n")
     prompt=[
-        SystemMessage(content="You are a research agent. Your task is to research a given topic and provide a detailed summary."),
+        SystemMessage(content="You are a research agent. Your task is to research a given topic and provide a detailed summary. You have web search tool in case needed"),
         HumanMessage(content=f"Research the following topic for the section '{section_to_research.name}', description '{section_to_research.description}'"),
     ]
-    # response= await agent.ainvoke(prompt)
-    response=await researchers.ainvoke(prompt)
+    response= agent.invoke(prompt)
+    # response=await researchers.ainvoke(prompt)
     print(f"Agent {len(state["completed_sections"])} Response {response}")
+    print("\n")
     return {"messages":response}
+
+def process_search_results(state: ReportState):
+    """Process search results and generate final summary"""
+    print("Processing search results...")
+    section_to_research = state["sections"][len(state["completed_sections"])]
+
+    # Get the conversation history including search results
+    conversation_history = state["messages"]
+
+    # Create a summarization prompt
+    prompt = [
+        SystemMessage(content="You are a research summarization agent. Based on the search results provided in the conversation, create a comprehensive and well-structured summary for the report section."),
+        HumanMessage(content=f"Based on all the search results above, provide a detailed, comprehensive summary for the section '{section_to_research.name}' with description '{section_to_research.description}'. Make it informative and well-organized.")
+    ]
+
+    # Combine conversation history with summarization prompt
+    full_conversation = conversation_history + prompt
+    response = researchers.invoke(full_conversation)
+    print(f"Summary generated: {response}")
+    return {"messages": response}
 
 def research_section_entry(state: ReportState):
     """Entry point for researching a section."""
@@ -69,7 +91,7 @@ def update_completed_sections(state:ReportState):
         "sections":updated_section
     }
 
-async def compile_final_report(state:ReportState):
+def compile_final_report(state:ReportState):
     # Introduction report
     # Conclusion report
     all_section="\n\n".join([s.content for s in state["sections"]])
@@ -80,20 +102,21 @@ async def compile_final_report(state:ReportState):
 def routing_function(state:ReportState):
     last_message=state["messages"][-1]
     if isinstance(last_message,AIMessage) and last_message.tool_calls:
+        print("TOOLS CALLED")
         return "research_tools"
     else:
         # return END
         return "update_completed_sections"
 
 graph=StateGraph(ReportState)
-toolnode=ToolNode(tools=tools)
+toolnode=ToolNode(tools)
 graph.add_node("generate_message_plan",generate_message_plan)
 graph.add_node("research_agent",research_agent)
 graph.add_node("research_section_entry",research_section_entry)
-# graph.add_node("should_continue_research",should_continue_research)
+graph.add_node("process_search_results", process_search_results) #claude
 graph.add_node("update_completed_sections",update_completed_sections)
 graph.add_node("compile_final_report",compile_final_report)
-# graph.add_node("research_tools", toolnode)
+graph.add_node("research_tools", toolnode)
 
 graph.add_edge(START,"generate_message_plan")
 graph.add_edge("generate_message_plan","research_section_entry")
@@ -106,24 +129,28 @@ graph.add_conditional_edges(
     }
 )
 # graph.add_edge("research_tools","research_agent")
-# graph.add_conditional_edges(
-#     "research_agent",
-#     routing_function,
-#     {
-#         "research_tools":"research_tools",
-#         "update_completed_sections":"update_completed_sections"
-#         # END:END
-#     }
-# )
-graph.add_edge("research_agent","update_completed_sections")
+graph.add_conditional_edges(
+    "research_agent",
+    routing_function,
+    {
+        "research_tools":"research_tools",
+        "update_completed_sections":"update_completed_sections"
+        # END:END
+    }
+)
+# graph.add_edge("research_agent","update_completed_sections") #if no web search
+# graph.add_edge("research_agent","research_tools") #web search raw
+# graph.add_edge("research_tools","update_completed_sections") #web search raw
+graph.add_edge("research_tools", "process_search_results")
+graph.add_edge("process_search_results", "update_completed_sections")
 graph.add_edge("update_completed_sections","research_section_entry")
 graph.add_edge("compile_final_report",END)
 app=graph.compile()
-# print(app.get_graph().draw_ascii())
-# print(app.get_graph().draw_mermaid())
+print(app.get_graph().draw_ascii())
+print(app.get_graph().draw_mermaid())
 
-async def main():
-    initial_topic = "What is K.V cache in large language models ? How does it help ?"
+def main(): #removed async
+    initial_topic = "What is GRPO in large language models ? How does it help ?"
 
     initial_state = {
         "topic": initial_topic,
@@ -133,7 +160,7 @@ async def main():
         "final_report":""
     }
 
-    final_state = await app.ainvoke(
+    final_state = app.invoke(
         initial_state,
         config={"recursion_limit": 50} #1+6*4 = 26 > 25
     )
@@ -143,4 +170,4 @@ async def main():
 
 if __name__=="__main__":
     print("Graph")
-    asyncio.run(main())
+    # main()

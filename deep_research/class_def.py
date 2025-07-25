@@ -9,15 +9,13 @@ class SectionState(BaseModel):
     name:str=Field(description="name of the section")
     description:str=Field(description="brief description of the section")
     content:str=Field(description="content of the section",default="")
+    # content:Annotated[Sequence[str],add_messages,Field(description="content of the section",default="")]
 
 class ReportState(TypedDict):
     topic:str
     sections:List[SectionState]
     completed_sections:Annotated[List[SectionState],operator.add]
     # completed_sections:List[SectionState]
-    messages:Annotated[Sequence[BaseMessage],add_messages]
+    messages:Annotated[List[BaseMessage],add_messages]
     # messages:List[BaseMessage]
-    final_report:str    
-
-
-
+    final_report:str
