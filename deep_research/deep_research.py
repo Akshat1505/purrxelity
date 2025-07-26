@@ -108,6 +108,7 @@ def routing_function(state:ReportState):
         # return END
         return "update_completed_sections"
 
+#Break into two subgraphs
 graph=StateGraph(ReportState)
 toolnode=ToolNode(tools)
 graph.add_node("generate_message_plan",generate_message_plan)
