@@ -1,5 +1,6 @@
 import React from 'react'
 import Sidebar from '../Components/Sidebar'
+import ChatWindow from '../Components/ChatWIndow'
 
 function Home() {
   return (
@@ -7,7 +8,7 @@ function Home() {
     <Sidebar/>
 
     <main className='flex-1 flex mb-80 items-center justify-center p-6'>
-      <h1 className='text-5xl text-gray-400 font-bold'>purrplexity</h1>
+      <ChatWindow/>
     </main>
   </div>
   )
