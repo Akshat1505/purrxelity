@@ -14,6 +14,8 @@ function Sidebar() {
       </button>
       <ul style={{fontFamily:'GruvBox'}} className='space-y-2 mt-10'>
         <li  className='text-lg '>History</li>
+
+
       </ul>
       <button onClick={()=>navigate('/login')} className='flex-col cursor-pointer mb-4 flex items-center '>
         <img className='mt-110 invert w-15 ' src="user.svg" alt="" />
