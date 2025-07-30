@@ -2,7 +2,7 @@ from langchain_core.messages import AIMessage, BaseMessage,HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import ToolNode
 from langchain_core.tools import tool
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langgraph.graph import add_messages,StateGraph
 from langgraph.constants import START,END
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -38,9 +38,10 @@ class LLMNode():
             "Flight Search Tool: Use the `search_flight` tool to find available flight between two airports and provide a concise answer about available flights. Always use the date tool first to accurately get the date for the date parameter. Specify the user how flight has been searched (e.g. Here are options for single adult, Here are options for two adult and a child)"
             "Get Current Date Tool : Use the get_curr_date to get the current date in the format %Y%m%d"
             ),
-            ("user","User input is {input}")
+            MessagesPlaceholder(variable_name="input")
+            # ("user","User input is {input}")
         ])
-        filled_template=prompt_template.format(input=last_message)
+        filled_template=prompt_template.format_messages(input=last_message)
         return{
             "messages":[self.llm.invoke(filled_template)]
         }
@@ -50,7 +51,7 @@ sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
 memory=SqliteSaver(sql_conn)
 search_tool=TavilySearchResults(max_result=5)
 tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date] #*user_gmail() token expired
-agent=LLMNode(llm=model.bind_tools(tools))
+agent=LLMNode(llm=model.bind_tools(tools)) #improve train search function
 
 def ModelCallTool(state:BasicChat):
     last_message=state["messages"][-1]

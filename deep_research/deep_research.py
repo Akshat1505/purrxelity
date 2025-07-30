@@ -6,7 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel,Field
-from class_def import ReportState,SectionState
+from class_def import ReportState,SectionState,SectionOutput
 from typing import List,TypedDict,Literal
 import asyncio
 from dotenv import load_dotenv
@@ -24,7 +24,7 @@ def generate_message_plan(state:ReportState):
         ("human","Generate a report plan for the topic: {input}") #change max section
     ])
     class Sections(BaseModel):
-        sections:List[SectionState]=Field(description="List of sections for the report atmost 2") #change max section
+        sections:List[SectionOutput]=Field(description="List of sections for the report atmost 2") #change max section
 
     structured_llm = llm.with_structured_output(Sections)
     formatted_prompt=prompt.format(input=state['topic'])

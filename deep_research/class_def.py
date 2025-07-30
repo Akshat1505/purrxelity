@@ -5,17 +5,18 @@ from langgraph.graph import add_messages
 import operator
 from pydantic import BaseModel,Field
 
-class SectionState(BaseModel):
+class SectionState(TypedDict):
+    name:str
+    description:str
+    content:Annotated[Sequence[BaseMessage],add_messages]
+
+class SectionOutput(BaseModel):
     name:str=Field(description="name of the section")
     description:str=Field(description="brief description of the section")
-    content:str=Field(description="content of the section",default="")
-    # content:Annotated[Sequence[str],add_messages,Field(description="content of the section",default="")]
 
 class ReportState(TypedDict):
     topic:str
-    sections:List[SectionState]
+    sections:List[SectionOutput]
     completed_sections:Annotated[List[SectionState],operator.add]
-    # completed_sections:List[SectionState]
     messages:Annotated[List[BaseMessage],add_messages]
-    # messages:List[BaseMessage]
     final_report:str
