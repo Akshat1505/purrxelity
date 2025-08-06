@@ -73,15 +73,16 @@ graph.add_conditional_edges(
         END:END
     }
 )
-app=graph.compile(checkpointer=memory)
-random_thread_id=uuid.uuid4()
-print(app.get_graph().draw_ascii())
-while True:
-    user_input=input("Enter _> : ")
-    if user_input in ['exit','quit']:
-        break
-    result=app.invoke({
-        "messages":HumanMessage(content=user_input)
-    },{"configurable":{"thread_id":random_thread_id}}
-    )
-    print(result["messages"][-1].content)
+main_graph=graph.compile(checkpointer=memory)
+if __name__=="__main__":
+    random_thread_id=uuid.uuid4()
+    # print(app.get_graph().draw_ascii())
+    while True:
+        user_input=input("Enter _> : ")
+        if user_input in ['exit','quit']:
+            break
+        result=main_graph.invoke({
+            "messages":HumanMessage(content=user_input)
+        },{"configurable":{"thread_id":random_thread_id}}
+        )
+        print(result["messages"][-1].content)
