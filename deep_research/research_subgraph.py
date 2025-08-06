@@ -7,7 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel,Field
-from class_def import ReportState,SectionState
+from .class_def import ReportState,SectionState
 from typing import List,TypedDict,Literal
 import asyncio
 from dotenv import load_dotenv
@@ -72,7 +72,7 @@ graph.add_conditional_edges(
 graph.set_entry_point("ModelReply")
 graph.add_edge("toolnode","ModelReply")
 app=graph.compile()
-print(app.get_graph().draw_ascii())
+# print(app.get_graph().draw_ascii())
 
 if __name__=="__main__":
     initial_state = {

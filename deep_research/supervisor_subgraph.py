@@ -7,11 +7,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel,Field
-from class_def import ReportState,SectionState,SectionOutput
+from .class_def import ReportState,SectionState,SectionOutput
 from typing import List,TypedDict,Literal
 import asyncio
 from dotenv import load_dotenv
-from research_subgraph import app as research_app
+from .research_subgraph import app as research_app
 load_dotenv()
 
 class SupervisorLLM():
@@ -63,7 +63,7 @@ graph.add_node("call_researcher",call_researcher)
 graph.set_entry_point("ModelReply")
 graph.add_edge("ModelReply","call_researcher")
 graph.add_edge("call_researcher",END)
-app=graph.compile()
+supervisor_graph=graph.compile()
 # print(app.get_graph().draw_ascii())
 
 if __name__=="__main__":
@@ -76,5 +76,5 @@ if __name__=="__main__":
         "messages": [],
         "final_report":""
     }
-    result=app.invoke(initial_state)
+    result=supervisor_graph.invoke(initial_state)
     print(result)

@@ -4,6 +4,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel,Field
 from typing import Annotated,Sequence,Literal,Optional
+from deep_research.supervisor_subgraph import supervisor_graph
 from search_main import main_graph
 import uuid
 import json
@@ -23,3 +24,14 @@ async def chat(input:str):
     )
     return result["messages"][-1].content
 
+@app.post('/chat/deep_research')
+async def deep_research(initial_topic:str):
+    initial_state = {
+        "topic": initial_topic,
+        "sections":[],
+        "completed_sections": [],
+        "messages": [],
+        "final_report":""
+    }
+    result=supervisor_graph.invoke(initial_topic)
+    print(result)
