@@ -15,7 +15,7 @@ fi
 PORT=${1:-$DEFAULT_PORT}
 
 #Check FastAPI is Installed
-# source env/bin/activate #Activate venv
+source env/bin/activate #Activate venv
 
 if ! command -v fastapi &> /dev/null; then
   echo "Error 'fastapi' command not found. Pleasee install FastAPI using pip install fastapi[all]"
