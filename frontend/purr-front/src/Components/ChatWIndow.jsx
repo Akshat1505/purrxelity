@@ -2,10 +2,46 @@ import React from 'react'
 import { useRef } from 'react';
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 function ChatWIndow() {
   const [active,setActive] = useState(1);
+  const [inputText, setInputText] = useState('');
+  const [response,setResponse] = useState('');
   const fileInputRef = useRef(null);
+  const [isChatStarted, setIsChatStarted] = useState(false);
+  const [message,setMessage] = useState([]);
+  const [isTyping , setIsTyping ] = useState(false);
+
+  // handle ssending msg to backend
+  const handleSend = async ()=>{
+    if(!inputText.trim()) return;
+
+    setMessage(prev=>[...prev, {sender:'user', text: inputText}])
+    setInputText('');
+    const formData = new FormData();
+    formData.append('input', inputText);
+
+    try{
+      const res = await fetch('http://localhost:8000/chat',{
+        method: 'POST',
+        body: formData,
+      })
+      if(!res.ok){
+        throw new Error(`Server responded with Status ${res.status}`)
+      }
+      const data = await res.text();
+      console.log('Reply:', data);
+      setResponse(data);
+      setIsChatStarted(true);
+      const cleanData = data.replace(/^"(.*)"$/, '$1')
+      setMessage(prev=>[...prev,{sender:'ai' , text: cleanData}])
+
+    }catch (error){
+      setResponse('Well There is Problem..');
+      console.error('Error Sending message', error);
+    }
+  }
 
   // Handling the File Picker
   const handleAttachmentClick=()=>{
@@ -23,33 +59,51 @@ function ChatWIndow() {
   }
 
   return (
-    <div className='flex flex-col flex-1 p-6 justify-center items-center text-gray-300'>
+    <div className='flex flex-col flex-1 p-6 justify-center items-center text-gray-300 rel'>
       <div className='relative flex justify-center items-center gap-4 mb-4 text-5xl font-bold'>
-        <span style={{fontFamily:'GruvBox'}} className=' text-[#ebdbb2]'>purrxelity</span>
-        
       </div>
-      <div className='flex w-1/2 mt-3'>
-          <input style={{fontFamily:'GruvBox'}}
+      <div className='relative w-full h-full'>
+        <button style={{fontFamily:'GruvBox'}} className='fixed top-4 right-10 cursor-pointer rounded-md transition hover:bg-blue-600  px-3 py-2 bg-[#ebdbb2] text-black ' >
+            Share/Export
+        </button>
+      </div>
+      <div className='flex flex-col w-full max-w-2xl mb-4 space-y-2'>
+        {message.map((msg,idx)=>(
+          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
+            <div style={{fontFamily:'GruvBox'}} className={`px-4 py-2 rounded-md ${msg.sender === 'user' ? 'bg-[#212121] text-white' : 'bg-[#282828] text-gray-100'}`}>
+              {msg.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Input Bar */}
+      <motion.div className=' flex w-1/2 mt-3' initial={{y: 0}} animate={isChatStarted ? {y: 520}: {y:0}} transition={{ease:'easeInOut', duration:0.5}}>
+        <div className='flex items-center bg-[#404040] rounded-md px-2 py-1 w-full' style={{fontFamily:'GruvBox'}}>
+          <input
             type='text'
             placeholder='Lets Go... Start Purring'
-            className='flex-1 w-1/2 h-12 py-2 pl-4 rounded-md text-white placeholder-gray-400 border border-white/20 bg-[#404040] focus:outline-none mt-3'/>  
-            <button className='cursor-pointer h-12 px-4 border-white/20 border-1-0 flex items-center justify-center rounded-md mt-3  ml-3 rouneded-r-mg bg-[#ebdbb2] border '>
+            className='flex-1 h-12 py-2 pl-4 rounded-md text-white placeholder-gray-400 bg-transparent focus:outline-none'
+            value={inputText}
+            onChange={(e)=>setInputText(e.target.value)}
+          />
+          <button onClick={handleAttachmentClick} className='p-2 rounded hover:bg-[#505050] transition ml-2 cursor-pointer'>
+            <img className='w-6 invert-75' src="attach.svg" alt="" />
+          </button>
+          <button onClick={handleSend} className='p-2 rounded hover:bg-[#505050] transition ml-2 cursor-pointer flex items-center justify-center'>
             <ArrowRight className='invert' />
-              </button> 
-             <button onClick={handleAttachmentClick} className={`ml-3 h-12 mt-3 p-3 cursor-pointer rounded-lg transition-all duration-200 border border-[#ebdbb2]`}>
-               <img className='w-6 invert-75' src="attach.svg" alt="" />
-             </button>
-             {/* Hidden */}
-             <input type="file" ref={fileInputRef} style={{display:'none'}} multiple onChange={hadnleFileChange} />
-        </div>   
-      <div className='flex bg-[#1a1a1a] rounded-xl p-2 mr-130 scale-71  gap-2'>
+          </button>
+          {/* Hidden */}
+          <input type="file" ref={fileInputRef} style={{display:'none'}} multiple onChange={hadnleFileChange} />
+        </div>
+      </motion.div>
+      {/* <div className='flex bg-[#1a1a1a] rounded-xl p-2 mr-130 scale-71  gap-2'>
         <button onClick={()=>setActive(1)} className={`p-3 w-20l cursor-pointer rounded-lg transition-all duration-200 ${active === 1 ? 'bg-[#ebdbb2]/20 border border-[#ebdbb2]': ' opacity-60'}`}>
           <img className='w-6 ml-1 invert-75' src="seach1.svg" alt="" />
         </button>
         <button onClick={()=>setActive(0)} className={`p-3 w-20 l cursor-pointer rounded-lg transition-all duration-200 ${active === 0 ? 'bg-[#ebdbb2]/20 border border-[#ebdbb2]': ' opacity-60'}`}>
           <img className='w-6 ml-3.5 invert-75' src="brain.svg" alt="" />
         </button>
-      </div>
+      </div> */}
     </div>
   )
 }

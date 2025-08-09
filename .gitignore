@@ -1,0 +1,7 @@
+.env
+env
+chroma_db
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+__pycache__
