@@ -1,4 +1,5 @@
 from fastapi import FastAPI,Path,Query,HTTPException
+from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -7,10 +8,18 @@ from pydantic import BaseModel,Field
 from typing import Annotated,Sequence,Literal,Optional
 from deep_research.supervisor_subgraph import supervisor_graph
 from search_main import main_graph
+from database.database import engine,get_db
+from database import models
 import uuid
 import json
 
-app=FastAPI()
+@asynccontextmanager
+async def start_engine(app:FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+    yield
+
+app=FastAPI(lifespan=start_engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,3 +52,5 @@ async def deep_research(initial_topic:str):
     }
     result=supervisor_graph.invoke(initial_state)
     return result["final_report"][0]
+
+## add creation,deletion,updation of user, 

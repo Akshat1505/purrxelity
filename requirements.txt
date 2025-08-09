@@ -9,6 +9,4 @@ langchain_chroma
 langchain_text_splitters
 langchain_community
 requests
-datetime
-sqlite3
-
+sqlalchemy[asyncio]
