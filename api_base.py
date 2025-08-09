@@ -1,5 +1,6 @@
 from fastapi import FastAPI,Path,Query,HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel,Field
@@ -10,11 +11,18 @@ import uuid
 import json
 
 app=FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 random_thread_id=uuid.uuid4()
 
 @app.get('/')
 async def root():
-    print("Hello world")
+    print("Welcome to Purrxelity API Dashboard")
 
 @app.post('/chat')
 async def chat(input:str):
@@ -33,5 +41,5 @@ async def deep_research(initial_topic:str):
         "messages": [],
         "final_report":""
     }
-    result=supervisor_graph.invoke(initial_topic)
-    print(result)
+    result=supervisor_graph.invoke(initial_state)
+    return result["final_report"][0]
