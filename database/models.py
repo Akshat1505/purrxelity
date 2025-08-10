@@ -12,6 +12,9 @@ class User(Base):
     creation_date=Column(DateTime(timezone=True),server_default=func.now())
     chats=relationship("ChatHistory",back_populates="owner")
 
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, email={self.email})>"
+
 class ChatHistory(Base):
     __tablename__="chat_histories"
     

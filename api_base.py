@@ -4,7 +4,6 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel,Field
 from typing import Annotated,Sequence,Literal,Optional
 from deep_research.supervisor_subgraph import supervisor_graph
 from search_main import main_graph
@@ -12,6 +11,7 @@ from database.database import engine,get_db
 from database import models
 import uuid
 import json
+from schemas import BasicChat
 
 @asynccontextmanager
 async def start_engine(app:FastAPI):
@@ -34,15 +34,15 @@ async def root():
     print("Welcome to Purrxelity API Dashboard")
 
 @app.post('/chat')
-async def chat(input:str):
+async def chat(user_input:BasicChat):
     result=main_graph.invoke({
-        "messages":HumanMessage(content=input)
+        "messages":HumanMessage(content=user_input.input)
     },{"configurable":{"thread_id":random_thread_id}}
     )
-    return result["messages"][-1].content
+    return {"message":result["messages"][-1].content}
 
 @app.post('/chat/deep_research')
-async def deep_research(initial_topic:str):
+async def deep_research(initial_topic:BasicChat):
     initial_state = {
         "topic": initial_topic,
         "sections":[],
@@ -51,6 +51,6 @@ async def deep_research(initial_topic:str):
         "final_report":""
     }
     result=supervisor_graph.invoke(initial_state)
-    return result["final_report"][0]
+    return {"message":result["final_report"][0]}
 
 ## add creation,deletion,updation of user, 
