@@ -19,7 +19,7 @@ class ChatHistory(Base):
     __tablename__="chat_histories"
     
     id=Column(Integer,primary_key=True)
-    thread_id=Column(String,unique=True,index=True,nullable=False)
+    thread_id=Column(String,unique=True,index=True) #nullable=False
     user_id=Column(Integer,ForeignKey("users.id"))
     messages=Column(JSON,nullable=False)
     create_at=Column(DateTime(timezone=True),server_default=func.now())
