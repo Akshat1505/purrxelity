@@ -36,6 +36,8 @@ random_thread_id=uuid.uuid4()
 async def root():
     print("Welcome to Purrxelity API Dashboard")
 
+## text endpoints
+
 @app.post('/chat')
 async def chat(user_input:BasicChat):
     result=main_graph.invoke({
@@ -56,7 +58,7 @@ async def deep_research(initial_topic:BasicChat):
     result=supervisor_graph.invoke(initial_state)
     return {"message":result["final_report"][0]}
 
-## add creation,deletion,updation of user, 
+## user crud 
 
 @app.post("/users/",response_model=schemas.UserRead,status_code=status.HTTP_201_CREATED)
 async def create_user(user:schemas.UserCreate,db:AsyncSession=Depends(get_db)):
@@ -76,3 +78,23 @@ async def read_user(user_id:int,db:AsyncSession=Depends(get_db)):
     if db_user is None:
         raise HTTPException(status_code=404,detail="User not found")
     return db_user
+
+@app.delete("/users/{user_id}",response_model=schemas.MessageResponse)
+async def delete_user(user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not Found")
+    await crud.delete_user(db,user_id)    
+    return {"message":"User Deleted Successfully"}
+
+## user chat crud
+
+@app.post("/users/{user_id}/chats/",response_model=schemas.ChatHistoryRead,status_code=201)
+async def create_chat_history(user_id:int,chat:schemas.ChatHistoryCreate,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not found")
+
+    return await crud.create_chat_history(db=db,chat_data=chat,user_id=user_id)
+
+

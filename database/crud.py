@@ -29,4 +29,35 @@ async def get_users(db:AsyncSession,skip:int=0,limit:int=100) -> Sequence[models
     result = await db.execute(select(models.User).offset(skip).limit(limit))
     return result.scalars().all()
 
+async def update_user(db:AsyncSession,user_id:int,updated_user:schemas.UserUpdate)->Optional[models.User]:
+    db_user=await get_user_by_id(db,user_id)
+    if not db_user:
+        return None
+    
+    updated_data=updated_user.model_dump(exclude_unset=True)
+    if "password" in updated_data:
+        hashed_passwd=get_passwd_hash(updated_data["password"])
+        db_user.hashed_password=hashed_passwd
+        del updated_data["password"]
+
+    for key,value in updated_data.items():
+        setattr(db_user,key,value)
+    
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
+async def delete_user(db: AsyncSession, user_id: int) -> bool:
+    stmt = delete(models.User).where(models.User.id == user_id)
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.rowcount > 0
+
+async def create_chat_history(db: AsyncSession, chat_data: schemas.ChatHistoryCreate, user_id: int) -> models.ChatHistory:
+    db_chat = models.ChatHistory(**chat_data.model_dump(), user_id=user_id)
+    db.add(db_chat)
+    await db.commit()
+    await db.refresh(db_chat)
+    return db_chat
+
 

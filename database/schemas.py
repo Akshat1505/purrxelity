@@ -12,9 +12,10 @@ class UserUpdate(BaseModel):
     email:Optional[EmailStr]=None
     password:Optional[str]=None
 
-class UserRead(UserBase):
+class UserRead(UserBase): #UserBase
     id:int
     creation_date:datetime
+    hashed_password:str
     class Config:
         from_attributes=True
 
@@ -32,3 +33,6 @@ class ChatHistoryRead(ChatHistoryBase):
 
     class Config:
         from_attributes=True
+
+class MessageResponse(BaseModel):
+    message:str
