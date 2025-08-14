@@ -29,7 +29,7 @@ class SupervisorLLM():
             sections:List[SectionOutput]=Field(description="List of sections for report atmost 2")
         structured_llm=self.llm.with_structured_output(Sections)
         response=Sections.model_validate(structured_llm.invoke(formatted_prompt))
-        print(response)
+        # print(response)
         return{
             "sections":response.sections
         }
@@ -46,8 +46,8 @@ def call_researcher(state:ReportState):
             "content":[HumanMessage(content="Research the topic strictly based on name and description")]
         }
         result=research_app.invoke(research_state)
-        print("RESEARCHER")
-        print(result)
+        # print("RESEARCHER")
+        # print(result)
         updated_section.append(result["content"][-1].content)
     return{
         "final_report":updated_section

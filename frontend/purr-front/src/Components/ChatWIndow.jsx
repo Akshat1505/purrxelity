@@ -3,6 +3,8 @@ import { useRef } from 'react';
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { input } from 'framer-motion/client';
+
 
 function ChatWIndow() {
   const [active,setActive] = useState(1);
@@ -25,18 +27,35 @@ function ChatWIndow() {
     try{
       const res = await fetch('http://localhost:8000/chat',{
         method: 'POST',
-        body: formData,
+        headers: {'Content-Type' : 'application/json'},
+        body: JSON.stringify({input:inputText}),
       })
       if(!res.ok){
         throw new Error(`Server responded with Status ${res.status}`)
       }
-      const data = await res.text();
-      console.log('Reply:', data);
-      setResponse(data);
-      setIsChatStarted(true);
-      const cleanData = data.replace(/^"(.*)"$/, '$1')
-      setMessage(prev=>[...prev,{sender:'ai' , text: cleanData}])
+      const data = await res.json();
+      const typeText = (text)=>{
+        let index = 0;  
+        setMessage(prev=>[...prev,{sender:'ai' , text: ''}])
 
+        const interval = setInterval(() => {
+            index++;
+            setMessage(prev=>{
+              const newMesg = [...prev];
+              newMesg[newMesg.length-1].text= text.slice(0,index);
+              return newMesg;
+            });
+            if(index >= text.length){
+              clearInterval(interval);
+              setIsTyping(false);
+            }
+        }, 20);
+      }
+      console.log('Reply:', data.message);
+      setResponse(data.message);
+      setIsChatStarted(true);
+      const cleanData = data.message.replace(/^"(.*)"$/, '$1').replace(/\n/g, ' ').replace(/\*/g, '').replace(/\s+/g, ' ').replace(/\\n/g, ' ').trim();
+      typeText(cleanData);
     }catch (error){
       setResponse('Well There is Problem..');
       console.error('Error Sending message', error);
@@ -69,15 +88,15 @@ function ChatWIndow() {
       </div>
       <div className='flex flex-col w-full max-w-2xl mb-4 space-y-2'>
         {message.map((msg,idx)=>(
-          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
-            <div style={{fontFamily:'GruvBox'}} className={`px-4 py-2 rounded-md ${msg.sender === 'user' ? 'bg-[#212121] text-white' : 'bg-[#282828] text-gray-100'}`}>
+          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div  className={`px-4 py-2 rounded-md ${msg.sender === 'user' ? 'bg-[#212121] text-white' : 'bg-[#282828] text-gray-100'}`} style={msg.sender !== 'user' ? {fontFamily:'GruvBox'}:{}}>
               {msg.text}
             </div>
           </div>
         ))}
       </div>
       {/* Input Bar */}
-      <motion.div className=' flex w-1/2 mt-3' initial={{y: 0}} animate={isChatStarted ? {y: 520}: {y:0}} transition={{ease:'easeInOut', duration:0.5}}>
+      <motion.div className=' flex w-1/2 mt-3' initial={{y: 0}} animate={isChatStarted ? {y: 50}: {y:0}} transition={{ease:'easeInOut', duration:0.5}}>
         <div className='flex items-center bg-[#404040] rounded-md px-2 py-1 w-full' style={{fontFamily:'GruvBox'}}>
           <input
             type='text'
