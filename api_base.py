@@ -4,9 +4,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from langchain_core.messages import HumanMessage
-from typing import Annotated,Sequence,Literal,Optional,List
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import user
+from sqlalchemy.future import select
 from deep_research.supervisor_subgraph import supervisor_graph
 from rag_processing import ingest_pdf
 import schemas
@@ -33,6 +34,7 @@ app.add_middleware(
 )
 random_thread_id=uuid.uuid4()
 PDF_STORAGE_PATH="pdf_storage"
+os.makedirs(PDF_STORAGE_PATH,exist_ok=True)
 
 @app.get('/')
 async def root():
@@ -89,15 +91,24 @@ async def delete_user(user_id:int,db:AsyncSession=Depends(get_db)):
     await crud.delete_user(db,user_id)    
     return {"message":"User Deleted Successfully"}
 
+@app.put("/users/{user_id}",response_model=schemas.UserRead)
+async def update_user(updated_user:schemas.UserUpdate,user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not Found")
+    updated_user_info=await crud.update_user(db,user_id,updated_user)
+    return updated_user_info
+
 ## user chat crud
 
-@app.post("/users/{user_id}/chats",response_model=schemas.ChatHistoryRead,status_code=201)
+@app.post("/users/{user_id}/chats",response_model=schemas.ChatHistoryRead)
 async def create_chat_history(user_id:int,chat:schemas.ChatHistoryCreate,db:AsyncSession=Depends(get_db)):
     db_user=await crud.get_user_by_id(db,user_id)
     if db_user is None:
         raise HTTPException(status_code=404,detail="User not found")
 
-    return await crud.create_chat_history(db=db,chat_data=chat,user_id=user_id)
+    created_chat_history=await crud.create_chat_history(db=db,chat_data=chat,user_id=user_id)
+    return created_chat_history
 
 ## pdf handling 
 

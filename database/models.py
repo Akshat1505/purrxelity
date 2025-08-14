@@ -22,6 +22,6 @@ class ChatHistory(Base):
     thread_id=Column(String,unique=True,index=True) #nullable=False
     user_id=Column(Integer,ForeignKey("users.id"))
     messages=Column(JSON,nullable=False)
-    create_at=Column(DateTime(timezone=True),server_default=func.now())
+    created_at=Column(DateTime(timezone=True),server_default=func.now())
     owner=relationship("User",back_populates="chats")
 

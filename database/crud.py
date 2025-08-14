@@ -1,3 +1,4 @@
+from sys import thread_info
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,delete
 from typing import List,Optional,Sequence
@@ -37,7 +38,7 @@ async def update_user(db:AsyncSession,user_id:int,updated_user:schemas.UserUpdat
     updated_data=updated_user.model_dump(exclude_unset=True)
     if "password" in updated_data:
         hashed_passwd=get_passwd_hash(updated_data["password"])
-        db_user.hashed_password=hashed_passwd
+        db_user.hashed_password=hashed_passwd #works
         del updated_data["password"]
 
     for key,value in updated_data.items():
@@ -54,7 +55,11 @@ async def delete_user(db: AsyncSession, user_id: int) -> bool:
     return result.rowcount > 0
 
 async def create_chat_history(db: AsyncSession, chat_data: schemas.ChatHistoryCreate, user_id: int) -> models.ChatHistory:
-    db_chat = models.ChatHistory(**chat_data.model_dump(), user_id=user_id)
+    db_chat = models.ChatHistory(
+        thread_id=chat_data.thread_id,
+        messages=chat_data.messages,
+        user_id=user_id
+    )
     db.add(db_chat)
     await db.commit()
     await db.refresh(db_chat)
