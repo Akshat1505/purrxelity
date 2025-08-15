@@ -71,8 +71,8 @@ def search_flight(source:str,destination:str,date:str,seating_class:str="E",sort
             }
             formatted_result[airline]=flight_information
 
-        price_sorted=dict(sorted(formatted_result.items(),key=lambda item:item[1]["price"])[:5])
-        duration_sorted=dict(sorted(formatted_result.items(),key=lambda item:duration_to_minutes(item[1]["duration"]))[:5])
+        price_sorted=dict(sorted(formatted_result.items(),key=lambda item:item[1]["price"])[:10])
+        duration_sorted=dict(sorted(formatted_result.items(),key=lambda item:duration_to_minutes(item[1]["duration"]))[:10])
 
         if sort.lower().strip()=="price":
             return json.dumps(price_sorted,indent=4)

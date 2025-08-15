@@ -3,17 +3,18 @@ from datetime import date
 from langchain_core.tools import tool
 
 @tool
-def search_train(source:str,destination:str):
+def search_train(source:str,destination:str,departure_date:str):
     """
     Tool to get ticket availability in a train between source and destination station for current date
     Args:
     source(str): The source station code (e.g. "BE").
     destination(str): The destination station code (e.g. "NDLS").
+    departure_date(str): The departure_date in the YYYYMMDD format (e.g. "20250815")
     Returns:
     A JSON object containing information about train availability, including train name, number and class availability with fares
-    abbreviation SL-Sleeper, 3A-Third AC, 2A-Second AC, 1A-First AC. If fare for any class shows as 0 take it as infinite
+    abbreviation SL-Sleeper, 3A-Third AC, 2A-Second AC, 1A-First AC. If fare for any class is shown as 0 take it as infinite and don't mention it to the user.
     """
-    departure_date=date.today().strftime("%Y%m%d")
+    # departure_date=date.today().strftime("%Y%m%d")
     # print(departure_date)
     url = (
         "https://travel.paytm.com/api/trains/v5/search?"
@@ -62,4 +63,4 @@ def search_train(source:str,destination:str):
         raise Exception(f"Failed with {response.status_code}")
 
 if __name__=="__main__":
-    print(search_train.invoke({"source":"BE","destination":"NDLS"}))
+    print(search_train.invoke({"source":"BE","destination":"NDLS","departure_date":"20250820"}))

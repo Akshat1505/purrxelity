@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from langchain_core.messages import HumanMessage
-from typing import List
+from typing import Any, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import user
 from sqlalchemy.future import select
@@ -102,13 +102,43 @@ async def update_user(updated_user:schemas.UserUpdate,user_id:int,db:AsyncSessio
 ## user chat crud
 
 @app.post("/users/{user_id}/chats",response_model=schemas.ChatHistoryRead)
-async def create_chat_history(user_id:int,chat:schemas.ChatHistoryCreate,db:AsyncSession=Depends(get_db)):
+async def create_chat_history(user_id:int,chat_data:schemas.ChatHistoryCreate,db:AsyncSession=Depends(get_db)):
     db_user=await crud.get_user_by_id(db,user_id)
     if db_user is None:
         raise HTTPException(status_code=404,detail="User not found")
-
-    created_chat_history=await crud.create_chat_history(db=db,chat_data=chat,user_id=user_id)
+    
+    thread_id=str(uuid.uuid4())
+    created_chat_history=await crud.create_chat_history(db,chat_data,user_id,thread_id)
     return created_chat_history
+
+@app.get("/users/{user_id}/chats",response_model=List[schemas.ChatHistoryRead])
+async def get_chat_history_by_user(user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not found")
+    
+    returned_chat_history=await crud.get_chat_history(db,user_id)
+    return returned_chat_history
+
+@app.delete("/users/{user_id}/chats",response_model=bool)
+async def delete_user_chat(user_id:int,chat_thread_id:str,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not found")
+    
+    result=await crud.delete_chat_history(user_id,db,chat_thread_id)
+    return result
+
+@app.put("/users/{user_id}/chats/{thread_id}")
+async def add_message_to_chat(user_id:int,thread_id:str,new_messages:List[Dict[str,Any]],db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not found")
+    
+    updated_chat=await crud.append_message_to_chat(user_id,thread_id,new_messages,db)
+    if not updated_chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    return updated_chat
 
 ## pdf handling 
 
@@ -128,3 +158,5 @@ async def upload_pdf_to_server(user_id:int,background_tasks:BackgroundTasks,db:A
         "filename":file.filename,
         "detail":"File Uploaded Successfully"
     }
+
+

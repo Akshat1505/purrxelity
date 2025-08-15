@@ -1,6 +1,7 @@
 from sys import thread_info
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,delete
+from sqlalchemy.orm import attributes
 from typing import List,Optional,Sequence
 from . import models,schemas
 from passlib.context import CryptContext
@@ -54,9 +55,9 @@ async def delete_user(db: AsyncSession, user_id: int) -> bool:
     await db.commit()
     return result.rowcount > 0
 
-async def create_chat_history(db: AsyncSession, chat_data: schemas.ChatHistoryCreate, user_id: int) -> models.ChatHistory:
+async def create_chat_history(db: AsyncSession, chat_data: schemas.ChatHistoryCreate, user_id: int,thread_id:str) -> models.ChatHistory:
     db_chat = models.ChatHistory(
-        thread_id=chat_data.thread_id,
+        thread_id=thread_id,
         messages=chat_data.messages,
         user_id=user_id
     )
@@ -65,4 +66,34 @@ async def create_chat_history(db: AsyncSession, chat_data: schemas.ChatHistoryCr
     await db.refresh(db_chat)
     return db_chat
 
+async def get_chat_history(db:AsyncSession,user_id:int) -> Sequence[models.ChatHistory]:
+    stmt = await db.execute(select(models.ChatHistory).where(models.ChatHistory.user_id==user_id))
+    return stmt.scalars().all()
 
+async def delete_chat_history(user_id:int,db:AsyncSession,chat_thread_id:str) -> bool:
+    stmt=(
+        delete(models.ChatHistory)
+        .where(
+            models.ChatHistory.thread_id==chat_thread_id,
+            models.ChatHistory.user_id==user_id
+        )
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.rowcount > 0 
+
+async def append_message_to_chat(user_id:int,thread_id:str,new_messages:List[dict],db:AsyncSession) -> Optional[models.ChatHistory]:
+    
+    stmt=select(models.ChatHistory).where(
+        models.ChatHistory.user_id==user_id,
+        models.ChatHistory.thread_id==thread_id
+    )
+    result=await db.execute(stmt)
+    chat=result.scalar_one_or_none()
+
+    if not chat: return None
+    attributes.flag_modified(chat, "messages")
+    chat.messages.extend(new_messages)
+    await db.commit()
+    await db.refresh(chat)
+    return chat

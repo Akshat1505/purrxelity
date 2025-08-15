@@ -23,8 +23,10 @@ class ChatHistoryBase(BaseModel):
     thread_id:str
     messages:List[Dict[str,Any]]
 
-class ChatHistoryCreate(ChatHistoryBase):
-    pass
+class ChatHistoryCreate(BaseModel):
+    thread_id:Optional[str]=None
+    messages:List[Dict[str,Any]]
+
 
 class ChatHistoryRead(ChatHistoryBase):
     id:int
