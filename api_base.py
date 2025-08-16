@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from langchain_core.messages import HumanMessage
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import user
 from sqlalchemy.future import select
@@ -14,6 +14,7 @@ import schemas
 from search_main import main_graph
 from database.database import engine,get_db
 from database import models,crud,schemas
+from datetime import datetime
 import uuid
 import json,os,shutil
 from schemas import BasicChat
@@ -32,7 +33,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-random_thread_id=uuid.uuid4()
+# random_thread_id=uuid.uuid4()
 PDF_STORAGE_PATH="pdf_storage"
 os.makedirs(PDF_STORAGE_PATH,exist_ok=True)
 
@@ -43,12 +44,31 @@ async def root():
 ## text endpoints
 
 @app.post('/chat')
-async def chat(user_input:BasicChat):
+async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user=await crud.get_user_by_id(db,user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404,detail="User not found")
+
+    formatted_message=[
+        {"role":"user","content":"","timestamp":datetime.now().isoformat()},
+        {"role":"assistant","content":"","timestamp":None}
+    ]
+    formatted_message[0]["content"]=user_input.input
+    thread_id=user_input.thread_id or str(uuid.uuid4())
     result=main_graph.invoke({
         "messages":HumanMessage(content=user_input.input)
-    },{"configurable":{"thread_id":random_thread_id}}
-    )
-    return {"message":result["messages"][-1].content}
+    },{"configurable":{"thread_id":thread_id}}
+    )["messages"][-1].content #not safe
+    formatted_message[1]["content"]=result
+    formatted_message[1]["timestamp"]=datetime.now().isoformat()
+    print(formatted_message)
+    print(thread_id)
+    await add_message_to_chat(user_id,thread_id,formatted_message,db)
+    # print(result)
+    return {
+        "message":result,
+        "thread_id":thread_id
+    }
 
 @app.post('/chat/deep_research')
 async def deep_research(initial_topic:BasicChat):
@@ -129,16 +149,17 @@ async def delete_user_chat(user_id:int,chat_thread_id:str,db:AsyncSession=Depend
     result=await crud.delete_chat_history(user_id,db,chat_thread_id)
     return result
 
-@app.put("/users/{user_id}/chats/{thread_id}")
+#redundant ?
+# @app.put("/users/{user_id}/chats/{thread_id}")
 async def add_message_to_chat(user_id:int,thread_id:str,new_messages:List[Dict[str,Any]],db:AsyncSession=Depends(get_db)):
     db_user=await crud.get_user_by_id(db,user_id)
     if db_user is None:
         raise HTTPException(status_code=404,detail="User not found")
-    
+    # await crud.append_message_to_chat(user_id,thread_id,new_messages,db) 
     updated_chat=await crud.append_message_to_chat(user_id,thread_id,new_messages,db)
     if not updated_chat:
         raise HTTPException(status_code=404, detail="Chat not found")
-    return updated_chat
+    # return updated_chat
 
 ## pdf handling 
 
