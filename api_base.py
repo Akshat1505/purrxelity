@@ -61,10 +61,7 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
     )["messages"][-1].content #not safe
     formatted_message[1]["content"]=result
     formatted_message[1]["timestamp"]=datetime.now().isoformat()
-    print(formatted_message)
-    print(thread_id)
     await add_message_to_chat(user_id,thread_id,formatted_message,db)
-    # print(result)
     return {
         "message":result,
         "thread_id":thread_id
