@@ -6,7 +6,7 @@ import Login from '../Components/Login1'
 function Home() {
   return (
   <div className='flex min-h-screen'>
-    <Sidebar/>
+    <Sidebar userId={1}/>
 
     <main className='flex-1 flex mb-80 items-center justify-center p-6'>
       <ChatWindow/>

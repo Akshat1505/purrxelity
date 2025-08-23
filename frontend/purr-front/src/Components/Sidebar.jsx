@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios';
 
-function Sidebar() {
+function Sidebar({userId}) {
   const navigate = useNavigate();
   const [chats, setChats] = useState([]);
 
