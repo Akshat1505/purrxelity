@@ -1,6 +1,7 @@
 import React from 'react'
 import Sidebar from '../Components/Sidebar'
 import ChatWindow from '../Components/ChatWIndow'
+import Login from '../Components/Login1'
 
 function Home() {
   return (
