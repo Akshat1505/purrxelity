@@ -60,28 +60,14 @@ function ChatWIndow() {
       if(!res.ok){
         throw new Error(`Server responded with Status ${res.status}`)
       }
-      const typeText = (text)=>{
-        let index = 0;  
-        setMessage(prev=>[...prev,{sender:'ai' , text: ''}])
-
-        const interval = setInterval(() => {
-            index++;
-            setMessage(prev=>{
-              const newMesg = [...prev];
-              newMesg[newMesg.length-1].text= text.slice(0,index);
-              return newMesg;
-            });
-            if(index >= text.length){
-              clearInterval(interval);
-              setIsTyping(false);
-            }
-        }, 20);
-      }
+      
       console.log('Reply:', data.message);
       setResponse(data.message);
       setIsChatStarted(true);
       const cleanData = data.message.replace(/^"(.*)"$/, '$1').replace(/\n/g, ' ').replace(/\*/g, '').replace(/\s+/g, ' ').replace(/\\n/g, ' ').trim();
-      typeText(cleanData);
+      setMessage(prev=>[...prev,
+        {sender:'ai' , text: cleanData}
+      ])
     }catch (error){
       setResponse('Well There is Problem..');
       console.error('Error Sending message', error);
@@ -145,7 +131,7 @@ function ChatWIndow() {
             }}
           />
           <button onClick={handleAttachmentClick} className='p-2 rounded hover:bg-[#505050] transition ml-2 cursor-pointer'>
-            <img className='w-6 invert-75' src="attach.svg" alt="" />
+            <img className='w-10 invert-75' src="attach.svg" alt="" />
           </button>
           <button onClick={handleSend} className='p-2 rounded mr-2 hover:bg-[#505050] transition ml-2 cursor-pointer flex items-center justify-center'>
             <ArrowRight className='invert' />
