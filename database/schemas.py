@@ -19,6 +19,10 @@ class UserRead(UserBase): #UserBase
     class Config:
         from_attributes=True
 
+class LoginRequest(BaseModel):
+    email:EmailStr
+    password:str
+
 class ChatHistoryBase(BaseModel):
     thread_id:str
     messages:List[Dict[str,Any]]

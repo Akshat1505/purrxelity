@@ -116,6 +116,16 @@ async def update_user(updated_user:schemas.UserUpdate,user_id:int,db:AsyncSessio
     updated_user_info=await crud.update_user(db,user_id,updated_user)
     return updated_user_info
 
+@app.post("/login",response_model=schemas.UserRead)
+async def login_for_access(user_cred:schemas.LoginRequest,db:AsyncSession=Depends(get_db)):
+    user=await crud.autheticate_user(db,email=user_cred.email,password=user_cred.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate":"Bearer"},
+        )
+    return user
 ## user chat crud
 
 @app.post("/users/{user_id}/chats",response_model=schemas.ChatHistoryRead)

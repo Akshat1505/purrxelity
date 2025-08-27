@@ -2,14 +2,25 @@ from sys import thread_info
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,delete
 from sqlalchemy.orm import attributes
-from typing import List,Optional,Sequence
+from typing import List,Optional,Sequence,cast
 from . import models,schemas
 from passlib.context import CryptContext
 
 pwd_context=CryptContext(schemes=["bcrypt"],deprecated="auto")
 
+def verify_password(plain_pass:str,hashed_pass:str) -> bool:
+    return pwd_context.verify(plain_pass,hashed_pass)
+
 def get_passwd_hash(password:str) -> str:
     return pwd_context.hash(password)
+
+async def autheticate_user(db:AsyncSession,email:str,password:str) -> Optional[models.User]:
+    user=await get_user_by_email(db,email)
+    if not user: 
+        return None
+    if not verify_password(password,cast(str,user.hashed_password)):
+        return None
+    return user
 
 async def create_user(db:AsyncSession,user:schemas.UserCreate) -> models.User:
     hashed_passwd=get_passwd_hash(user.password)
