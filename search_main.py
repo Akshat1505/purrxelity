@@ -6,9 +6,11 @@ from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langgraph.graph import add_messages,StateGraph
 from langgraph.constants import START,END
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from typing import Annotated,Sequence,List, TypedDict
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sqlite3
+import asyncio
 from dotenv import load_dotenv
 import uuid
 from train_status import search_train
@@ -48,8 +50,9 @@ class LLMNode():
         }
 
 model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
-sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
-memory=SqliteSaver(sql_conn)
+# sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
+# memory=SqliteSaver(sql_conn)
+memory=AsyncSqliteSaver.from_conn_string("checkpoint.sqlite")
 search_tool=TavilySearchResults(max_result=5)
 tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date] #*user_gmail() token expired
 agent=LLMNode(llm=model.bind_tools(tools)) #improve train search function
@@ -74,20 +77,56 @@ graph.add_conditional_edges(
         END:END
     }
 )
-main_graph=graph.compile(checkpointer=memory)
-if __name__=="__main__":
-    random_thread_id=uuid.uuid4()
-    # print(app.get_graph().draw_ascii())
-    while True:
-        user_input=input("Enter _> : ")
-        if user_input in ['exit','quit']:
-            break
-        for message_chunk,metadata in main_graph.stream(
-            {"messages":HumanMessage(content=user_input)},
-            {"configurable":{"thread_id":random_thread_id}},
+
+async def run_chat_turn(main_graph, thread_id):
+    user_input = input("Enter _> : ")
+    if user_input.lower() in ['exit', 'quit']:
+        return False  
+
+    async for chunk,_ in main_graph.astream(
+        {"messages": [HumanMessage(content=user_input)]},
+        config={"configurable": {"thread_id": thread_id}},
+        stream_mode="messages"  
+    ):
+        if isinstance(chunk,AIMessage) and chunk.content:
+            print(chunk.content,end="",flush=True)
+    print('\n')
+    return True 
+
+async def main():
+    thread_id = str(uuid.uuid4())
+    print(f"Starting new chat session with Thread ID: {thread_id}")
+
+    async with AsyncSqliteSaver.from_conn_string("checkpoint.sqlite") as memory:
+        main_graph = graph.compile(checkpointer=memory)
+
+        while True:
+            should_continue = await run_chat_turn(main_graph, thread_id)
+            if not should_continue:
+                break
+
+async def stream_chat_response(user_input:str,thread_id:str):
+    async with AsyncSqliteSaver.from_conn_string("checkpoint.sqlite") as memory:
+        main_graph = graph.compile(checkpointer=memory)
+
+        async for message_chunk,_ in main_graph.astream(
+            {"messages": [HumanMessage(content=user_input)]},
+            config={"configurable": {"thread_id": thread_id}},
             stream_mode="messages"
         ):
             if isinstance(message_chunk,AIMessage) and message_chunk.content:
-                print(message_chunk.content, end="",flush=True)
+                yield message_chunk.content
 
-        print('\n')
+async def get_chat_response(user_input: str, thread_id: str):
+    async with AsyncSqliteSaver.from_conn_string("checkpoint.sqlite") as memory:
+        main_graph = graph.compile(checkpointer=memory)
+        
+        result = main_graph.invoke({
+            "messages": [HumanMessage(content=user_input)]
+        }, {"configurable": {"thread_id": thread_id}})
+        
+        return result["messages"][-1].content
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

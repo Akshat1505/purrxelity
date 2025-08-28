@@ -12,7 +12,7 @@ from sqlalchemy.future import select
 from deep_research.supervisor_subgraph import supervisor_graph
 from rag_processing import ingest_pdf
 import schemas
-from search_main import main_graph
+from search_main import stream_chat_response,get_chat_response
 from database.database import engine,get_db
 from database import models,crud,schemas
 from datetime import datetime
@@ -56,10 +56,11 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
     ]
     formatted_message[0]["content"]=user_input.input
     thread_id=user_input.thread_id or str(uuid.uuid4())
-    result=main_graph.invoke({
-        "messages":HumanMessage(content=user_input.input)
-    },{"configurable":{"thread_id":thread_id}}
-    )["messages"][-1].content #not safe
+    # result=main_graph.invoke({
+    #     "messages":HumanMessage(content=user_input.input)
+    # },{"configurable":{"thread_id":thread_id}}
+    # )["messages"][-1].content #not safe
+    result=await get_chat_response(user_input.input,thread_id)
     formatted_message[1]["content"]=result
     formatted_message[1]["timestamp"]=datetime.now().isoformat()
     await add_message_to_chat(user_id,thread_id,formatted_message,db)
@@ -68,33 +69,18 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
         "thread_id":thread_id
     }
 
-@app.post('chat/stream')
+    
+@app.post('/chat/stream')
 async def chat_streaming(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
     db_user = await crud.get_user_by_id(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
     thread_id = user_input.thread_id or str(uuid.uuid4())
-    async def event_generator():
-        for message_chunk,metadata in main_graph.stream(
-        {"messages":HumanMessage(content=user_input.input)},
-        {"configurable":{"thread_id":thread_id}},
-        stream_mode="messages"
-        ):
-            if isinstance(message_chunk,AIMessage) and message_chunk.content:
-                yield {
-                    "event": "message",
-                    "id": str(uuid.uuid4()),
-                    "retry": 5000,
-                    "data": message_chunk.content,
-                }
-
-        yield {
-            "event": "done",
-            "data": "[END]"
-        }
-
-    return EventSourceResponse(event_generator())
+    return StreamingResponse(
+        stream_chat_response(user_input.input,thread_id),
+        media_type="text/plain"
+    )
 
 @app.post('/chat/deep_research')
 async def deep_research(initial_topic:BasicChat):
