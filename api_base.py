@@ -1,9 +1,10 @@
 from fastapi import BackgroundTasks, Depends, FastAPI, File,Path,Query,HTTPException, UploadFile,status
 from contextlib import asynccontextmanager
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,StreamingResponse
+from sse_starlette.sse import EventSourceResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from typing import Any, List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import user
@@ -43,7 +44,7 @@ async def root():
 
 ## text endpoints
 
-@app.post('/chat')
+@app.post('/chat') # SSE or websocket for streaming
 async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
     db_user=await crud.get_user_by_id(db,user_id=user_id)
     if db_user is None:
@@ -66,6 +67,34 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
         "message":result,
         "thread_id":thread_id
     }
+
+@app.post('chat/stream')
+async def chat_streaming(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user = await crud.get_user_by_id(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    thread_id = user_input.thread_id or str(uuid.uuid4())
+    async def event_generator():
+        for message_chunk,metadata in main_graph.stream(
+        {"messages":HumanMessage(content=user_input.input)},
+        {"configurable":{"thread_id":thread_id}},
+        stream_mode="messages"
+        ):
+            if isinstance(message_chunk,AIMessage) and message_chunk.content:
+                yield {
+                    "event": "message",
+                    "id": str(uuid.uuid4()),
+                    "retry": 5000,
+                    "data": message_chunk.content,
+                }
+
+        yield {
+            "event": "done",
+            "data": "[END]"
+        }
+
+    return EventSourceResponse(event_generator())
 
 @app.post('/chat/deep_research')
 async def deep_research(initial_topic:BasicChat):

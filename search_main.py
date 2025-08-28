@@ -29,6 +29,7 @@ class LLMNode():
         last_message=state["messages"]
         prompt_template=ChatPromptTemplate.from_messages([
             ("system", 
+            "THE CURRENT YEAR IS 2025, DO NOT ASK THE USER FOR YEAR CONFIRMATION WHILE MAKING TOOL CALLS"
             "You are a helpful AI built to solve user queries using a set of specialized tools. Use them appropriately based on the user's request:"
             "Search Tool: Use this when the user asks questions that require up-to-date information from the web"
             "Train Search Tool: Use the `search_train` tool to find trains between two railway stations and provide a concise answer about available trains and coach classes."
@@ -81,8 +82,12 @@ if __name__=="__main__":
         user_input=input("Enter _> : ")
         if user_input in ['exit','quit']:
             break
-        result=main_graph.invoke({
-            "messages":HumanMessage(content=user_input)
-        },{"configurable":{"thread_id":random_thread_id}}
-        )
-        print(result["messages"][-1].content)
+        for message_chunk,metadata in main_graph.stream(
+            {"messages":HumanMessage(content=user_input)},
+            {"configurable":{"thread_id":random_thread_id}},
+            stream_mode="messages"
+        ):
+            if isinstance(message_chunk,AIMessage) and message_chunk.content:
+                print(message_chunk.content, end="",flush=True)
+
+        print('\n')
