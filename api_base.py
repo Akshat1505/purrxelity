@@ -34,7 +34,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# random_thread_id=uuid.uuid4()
 PDF_STORAGE_PATH="pdf_storage"
 os.makedirs(PDF_STORAGE_PATH,exist_ok=True)
 
@@ -76,10 +75,25 @@ async def chat_streaming(user_input:BasicChat,user_id:int,db:AsyncSession=Depend
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    formatted_message=[
+        {"role":"user","content":"","timestamp":datetime.now().isoformat()},
+        {"role":"assistant","content":"","timestamp":None}
+    ]
+    formatted_message[0]["content"]=user_input.input
     thread_id = user_input.thread_id or str(uuid.uuid4())
+    full_response=[]
+    async def generate_stream_and_save():
+        async for message_chunk in stream_chat_response(user_input.input,thread_id):
+            full_response.append(message_chunk)
+            yield message_chunk
+        formatted_message[1]["content"]="".join(full_response)
+        formatted_message[1]["timestamp"]=datetime.now().isoformat()
+        await add_message_to_chat(user_id,thread_id,formatted_message,db)
+
     return StreamingResponse(
-        stream_chat_response(user_input.input,thread_id),
-        media_type="text/plain"
+        generate_stream_and_save(),
+        # stream_chat_response(user_input.input,thread_id),
+        media_type="text/event-stream"
     )
 
 @app.post('/chat/deep_research')
