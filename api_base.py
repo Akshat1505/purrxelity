@@ -1,9 +1,10 @@
 from fastapi import BackgroundTasks, Depends, FastAPI, File,Path,Query,HTTPException, UploadFile,status
 from contextlib import asynccontextmanager
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,StreamingResponse
+from sse_starlette.sse import EventSourceResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from typing import Any, List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import user
@@ -11,7 +12,7 @@ from sqlalchemy.future import select
 from deep_research.supervisor_subgraph import supervisor_graph
 from rag_processing import ingest_pdf
 import schemas
-from search_main import main_graph
+from search_main import stream_chat_response,get_chat_response
 from database.database import engine,get_db
 from database import models,crud,schemas
 from datetime import datetime
@@ -43,7 +44,7 @@ async def root():
 
 ## text endpoints
 
-@app.post('/chat')
+@app.post('/chat') # SSE or websocket for streaming
 async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
     db_user=await crud.get_user_by_id(db,user_id=user_id)
     if db_user is None:
@@ -55,10 +56,11 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
     ]
     formatted_message[0]["content"]=user_input.input
     thread_id=user_input.thread_id or str(uuid.uuid4())
-    result=main_graph.invoke({
-        "messages":HumanMessage(content=user_input.input)
-    },{"configurable":{"thread_id":thread_id}}
-    )["messages"][-1].content #not safe
+    # result=main_graph.invoke({
+    #     "messages":HumanMessage(content=user_input.input)
+    # },{"configurable":{"thread_id":thread_id}}
+    # )["messages"][-1].content #not safe
+    result=await get_chat_response(user_input.input,thread_id)
     formatted_message[1]["content"]=result
     formatted_message[1]["timestamp"]=datetime.now().isoformat()
     await add_message_to_chat(user_id,thread_id,formatted_message,db)
@@ -66,6 +68,19 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
         "message":result,
         "thread_id":thread_id
     }
+
+    
+@app.post('/chat/stream')
+async def chat_streaming(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db)):
+    db_user = await crud.get_user_by_id(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    thread_id = user_input.thread_id or str(uuid.uuid4())
+    return StreamingResponse(
+        stream_chat_response(user_input.input,thread_id),
+        media_type="text/plain"
+    )
 
 @app.post('/chat/deep_research')
 async def deep_research(initial_topic:BasicChat):
@@ -116,6 +131,16 @@ async def update_user(updated_user:schemas.UserUpdate,user_id:int,db:AsyncSessio
     updated_user_info=await crud.update_user(db,user_id,updated_user)
     return updated_user_info
 
+@app.post("/login",response_model=schemas.UserRead)
+async def login_for_access(user_cred:schemas.LoginRequest,db:AsyncSession=Depends(get_db)):
+    user=await crud.autheticate_user(db,email=user_cred.email,password=user_cred.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate":"Bearer"},
+        )
+    return user
 ## user chat crud
 
 @app.post("/users/{user_id}/chats",response_model=schemas.ChatHistoryRead)

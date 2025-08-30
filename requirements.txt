@@ -2,7 +2,6 @@ fastapi[all]
 langchain
 langchain_core
 langgraph
-pydantic
 langchain_google_community
 langchain_google_genai
 langchain_chroma
@@ -10,3 +9,4 @@ langchain_text_splitters
 langchain_community
 requests
 sqlalchemy[asyncio]
+greenlet

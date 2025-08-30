@@ -42,29 +42,41 @@ function ChatWIndow() {
   const handleSend = async ()=>{
     if(!inputText.trim()) return;
 
-    setMessage(prev=>[...prev, {sender:'user', text: inputText}])
+    const messageToSend = inputText;
+
+    setMessage(prev=>[...prev, {sender:'user', text: messageToSend}])
     setInputText('');
     const currentThread = await ensureThread();
 
     try{
-      const res = await fetch('http://localhost:8000/chat?user_id=1',{
+      const res = await fetch('http://localhost:8000/chat/stream?user_id=1',{
         method: 'POST',
         headers: {'Content-Type' : 'application/json'},
-        body: JSON.stringify({input:inputText,
+        body: JSON.stringify({input:messageToSend,
           thread_id: currentThread,
         }),
       });
-      const data = await res.json();
-      console.log("reply" , data.message);
+
+      const reader = res.body.getReader();
+      let decoder = new TextDecoder();
+      let aiMessage = "";
+
+      while(true){
+        const {done , value} = await reader.read();
+        if(done){
+          break;
+        }
+        aiMessage += decoder.decode(value,{stream: true});
+      }
+      
       
       if(!res.ok){
         throw new Error(`Server responded with Status ${res.status}`)
       }
       
-      console.log('Reply:', data.message);
-      setResponse(data.message);
+      setResponse(aiMessage);
       setIsChatStarted(true);
-      const cleanData = data.message.replace(/^"(.*)"$/, '$1').replace(/\n/g, ' ').replace(/\*/g, '').replace(/\s+/g, ' ').replace(/\\n/g, ' ').trim();
+      const cleanData = aiMessage.replace(/^"(.*)"$/, '$1').replace(/\n/g, ' ').replace(/\*/g, '').replace(/\s+/g, ' ').replace(/\\n/g, ' ').trim();
       setMessage(prev=>[...prev,
         {sender:'ai' , text: cleanData}
       ])
