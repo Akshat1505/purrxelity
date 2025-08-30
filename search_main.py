@@ -50,8 +50,6 @@ class LLMNode():
         }
 
 model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
-# sql_conn=sqlite3.connect("checkpoint.sqlite",check_same_thread=False)
-# memory=SqliteSaver(sql_conn)
 memory=AsyncSqliteSaver.from_conn_string("checkpoint.sqlite")
 search_tool=TavilySearchResults(max_result=5)
 tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date] #*user_gmail() token expired
@@ -77,6 +75,16 @@ graph.add_conditional_edges(
         END:END
     }
 )
+
+def get_chat_response(user_input:str,thread_id:str):
+    sql_conn=sqlite3.connect("checkpoint_sync.sqlite",check_same_thread=False)
+    memory_sync=SqliteSaver(sql_conn)
+    without_stream_app=graph.compile(checkpointer=memory_sync)
+    result=without_stream_app.invoke({
+        "messages":HumanMessage(content=user_input)
+    },{"configurable":{"thread_id":thread_id}}
+    )
+    return result["messages"][-1].content
 
 async def run_chat_turn(main_graph, thread_id):
     user_input = input("Enter _> : ")
@@ -116,17 +124,6 @@ async def stream_chat_response(user_input:str,thread_id:str):
         ):
             if isinstance(message_chunk,AIMessage) and message_chunk.content:
                 yield message_chunk.content
-
-async def get_chat_response(user_input: str, thread_id: str):
-    async with AsyncSqliteSaver.from_conn_string("checkpoint.sqlite") as memory:
-        main_graph = graph.compile(checkpointer=memory)
-        
-        result = main_graph.invoke({
-            "messages": [HumanMessage(content=user_input)]
-        }, {"configurable": {"thread_id": thread_id}})
-        
-        return result["messages"][-1].content
-
 
 if __name__ == "__main__":
     asyncio.run(main())

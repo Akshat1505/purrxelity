@@ -55,11 +55,7 @@ async def chat(user_input:BasicChat,user_id:int,db:AsyncSession=Depends(get_db))
     ]
     formatted_message[0]["content"]=user_input.input
     thread_id=user_input.thread_id or str(uuid.uuid4())
-    # result=main_graph.invoke({
-    #     "messages":HumanMessage(content=user_input.input)
-    # },{"configurable":{"thread_id":thread_id}}
-    # )["messages"][-1].content #not safe
-    result=await get_chat_response(user_input.input,thread_id)
+    result=get_chat_response(user_input.input,thread_id)
     formatted_message[1]["content"]=result
     formatted_message[1]["timestamp"]=datetime.now().isoformat()
     await add_message_to_chat(user_id,thread_id,formatted_message,db)
