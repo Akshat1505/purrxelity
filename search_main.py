@@ -18,6 +18,7 @@ from gmail_integr import user_gmail
 from rag_main import rag_tool
 from flight_status import search_flight
 from datetime_tool import get_curr_date
+from code_tool import CodeExecutor
 load_dotenv()
 
 class BasicChat(TypedDict):
@@ -40,9 +41,9 @@ class LLMNode():
             "Answer normally when the query does not require any tool usage."
             "Flight Search Tool: Use the `search_flight` tool to find available flight between two airports and provide a concise answer about available flights. Always use the date tool first to accurately get the date for the date parameter. Specify the user how flight has been searched (e.g. Here are options for single adult, Here are options for two adult and a child)"
             "Get Current Date Tool : Use the get_curr_date to get the current date in the format %Y%m%d"
+            "Code Executor Tool : Use the CodeExecutor tool to safely execute any C++,Python,Rust code. Use this either when user explictly demands it, or for any complex calculation or computation Input: language and code string. Output: execution result" 
             ),
             MessagesPlaceholder(variable_name="input")
-            # ("user","User input is {input}")
         ])
         filled_template=prompt_template.format_messages(input=last_message)
         return{
@@ -52,7 +53,7 @@ class LLMNode():
 model=ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=1.0)
 memory=AsyncSqliteSaver.from_conn_string("checkpoint.sqlite")
 search_tool=TavilySearchResults(max_result=5)
-tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date] #*user_gmail() token expired
+tools=[search_tool,search_train,*rag_tool(),search_flight,get_curr_date,CodeExecutor()] #*user_gmail() token expired
 agent=LLMNode(llm=model.bind_tools(tools)) #improve train search function
 
 def ModelCallTool(state:BasicChat):
