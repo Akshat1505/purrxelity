@@ -16,6 +16,9 @@ function ChatWIndow() {
   const [isTyping , setIsTyping ] = useState(false);
   const [threadId , setThreadId] = useState(null);
   const [greet , setGreet] = useState('');
+  const [isLogged , setIsLogged] = useState(false);
+  let storedId = localStorage.getItem("user_id");
+  const userId = (!storedId || storedId === "null") ? "guest" : storedId;
   const navigate = useNavigate();
 
   useEffect(()=>{
@@ -23,17 +26,29 @@ function ChatWIndow() {
     if(hour >= 5 && hour <12) setGreet('Good Morning');
     else if(hour >= 12 && hour < 18) setGreet('Good Afternoon');
     else setGreet('Good Evening');
+  },[]);
+
+  useEffect(()=>{
+    if(localStorage.getItem("user")){
+      setIsLogged(true);
+    }
   },[])
 
   const ensureThread = async () => {
     if(threadId) return threadId;
-    const res = await fetch("http://localhost:8000/users/1/chats",{
+    if(userId === "guest"){
+      const tempId = threadId || crypto.randomUUID();
+      setThreadId(tempId);
+      return tempId;
+    }
+    const res = await fetch(`http://localhost:8000/users/${userId}/chats`,{
       method: "POST",
       headers: {"Content-Type" : "application/json"},
       body: JSON.stringify({thread_id: null,
         messages: []
       }),
     });
+    
     const data = await res.json();
     setThreadId(data.thread_id);
     return data.thread_id;
@@ -48,8 +63,12 @@ function ChatWIndow() {
     setInputText('');
     const currentThread = await ensureThread();
 
+    if(userId === "guest"){
+      navigate('/login')
+      return;
+    }
     try{
-      const res = await fetch('http://localhost:8000/chat/stream?user_id=1',{
+      const res = await fetch(`http://localhost:8000/chat/stream?user_id=${userId}`,{
         method: 'POST',
         headers: {'Content-Type' : 'application/json'},
         body: JSON.stringify({input:messageToSend,
@@ -101,19 +120,29 @@ function ChatWIndow() {
     }
   }
 
+  const handleLogout = ()=>{
+    localStorage.clear();
+    setIsLogged(false);
+    navigate('/login');
+  }
+
   return (
     <div className='flex flex-col flex-1 p-6 justify-center items-center text-gray-300 rel'>
       {greet && !isChatStarted && (
         <div style={{fontFamily:'GruvBox'}} className='mb-2 text-4xl font-semibold text-gray-300'>
-          {greet}
+          {greet} 
         </div>
       )}
       <div className='relative flex justify-center items-center gap-4 mb-4 text-5xl font-bold'>
       </div>
       <div className='relative w-full h-full'>
-        <button onClick={()=>navigate('/login')} style={{fontFamily:'GruvBox'}} className='fixed top-4 right-10 cursor-pointer rounded-md transition hover:bg-blue-600  px-3 py-2 bg-gray-400 text-black ' >
-            Login/SignUp
+        {!isLogged ? (
+          <button onClick={()=>navigate('/login')} style={{fontFamily:'GruvBox'}} className='fixed top-4 right-10 cursor-pointer rounded-md transition hover:bg-blue-600  px-3 py-2 bg-gray-400 text-black ' >
+            &gt; Login/SignUp
         </button>
+        ): (
+          <button onClick={handleLogout} style={{fontFamily:"GruvBox"}} className='fixed top-4 right-10 cursor-pointer rounded-md transition hover:bg-blue-600  px-3 py-2 bg-gray-400 text-black'>&gt; Logout</button>
+        )}
       </div>
       <div className='flex flex-col w-1/2 mx-atuo  space-y-2'>
         {message.map((msg,idx)=>(
