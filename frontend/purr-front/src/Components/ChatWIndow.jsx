@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
 
 function ChatWIndow() {
@@ -19,7 +19,14 @@ function ChatWIndow() {
   const [isLogged , setIsLogged] = useState(false);
   let storedId = localStorage.getItem("user_id");
   const userId = (!storedId || storedId === "null") ? "guest" : storedId;
+  const {threadId: urlThreadId} = useParams();
   const navigate = useNavigate();
+
+  useEffect(()=>{
+    if(urlThreadId){
+      setThreadId(urlThreadId);
+    }
+  },[urlThreadId])
 
   useEffect(()=>{
     const hour = new Date().getHours();
@@ -35,9 +42,10 @@ function ChatWIndow() {
   },[])
 
   const ensureThread = async () => {
+    if(urlThreadId) return urlThreadId;
     if(threadId) return threadId;
     if(userId === "guest"){
-      const tempId = threadId || crypto.randomUUID();
+      const tempId =  crypto.randomUUID();
       setThreadId(tempId);
       return tempId;
     }
