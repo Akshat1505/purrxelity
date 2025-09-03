@@ -46,15 +46,11 @@ class CodeExecutor(BaseTool):
             filepath = os.path.join(temp_dir, templates[language]['filename'])
             with open(filepath, "w") as f:
                 f.write(code)    
-            cmd_parts=[]
-            if templates[language]["compile"]:
-                cmd_parts.append(templates[language]["compile"])
-            cmd_parts.append(templates[language]["run"])
-            full_cmd=" && ".join(cmd_parts)
+            full_cmd=" && ".join(filter(None,[templates[language]["compile"],templates[language]["run"]]))
             result=client.containers.run(
                 image=self.DOCKER_IMAGE,
                 command=f'/bin/sh -c "timeout 10 {full_cmd}"',
-                volumes={temp_dir: {'bind': '/app', 'mode': 'ro'}},
+                volumes={temp_dir: {'bind': '/app', 'mode': 'rw'}},
                 working_dir='/app',
                 pids_limit=20,
                 mem_limit='512m',
@@ -65,7 +61,7 @@ class CodeExecutor(BaseTool):
             )
             return result.decode('utf-8').strip()
         except Exception as e:
-            print(f"Code execution failed with error : {str(e)} ")
+            print(f"Code execution : {str(e)} ")
         finally:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
